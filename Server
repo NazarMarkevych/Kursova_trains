@@ -1,0 +1,295 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <winsock2.h>
+
+#pragma comment(lib, "ws2_32.lib")
+
+class Train {
+public:
+	Train(const std::string& name, const std::string& destination, int seats, double price)
+		: name(name), destination(destination), seats(seats), price(price) {}
+
+	const std::string& getName() const {
+		return name;
+	}
+
+	const std::string& getDestination() const {
+		return destination;
+	}
+
+	int getSeats() const {
+		return seats;
+	}
+
+	double getPrice() const {
+		return price;
+	}
+
+	void reserveSeat() {
+		if (seats > 0) {
+			seats--;
+			std::cout << "Seat reserved successfully!\n";
+		}
+		else {
+			std::cout << "No available seats on this train.\n";
+		}
+	}
+
+	void cancelReservation() {
+		seats++;
+		std::cout << "Reservation canceled successfully!\n";
+	}
+
+private:
+	std::string name;
+	std::string destination;
+	int seats;
+	double price;
+};
+
+class TrainReservationSystem {
+public:
+	void addTrain(const std::string& name, const std::string& destination, int seats, double price) {
+		trains.push_back(Train(name, destination, seats, price));
+	}
+
+	std::string removeTrain(const std::string& trainName) {
+		for (auto it = trains.begin(); it != trains.end(); ++it) {
+			if (it->getName() == trainName) {
+				trains.erase(it);
+				return "Train removed successfully!\n";
+			}
+		}
+		return "Train not found!\n";
+	}
+
+	std::string showAvailableTrains() const {
+		std::stringstream ss;
+		ss << "Available Trains:\n";
+		for (const auto& train : trains) {
+			ss << "Train Name: " << train.getName() << "\n";
+			ss << "Destination: " << train.getDestination() << "\n";
+			ss << "Available Seats: " << train.getSeats() << "\n";
+			ss << "Price: $" << train.getPrice() << "\n\n";
+		}
+		return ss.str();
+	}
+
+	std::string showTrainDetails(const std::string& trainName) const {
+		std::stringstream ss;
+		for (const auto& train : trains) {
+			if (train.getName() == trainName) {
+				ss << "Train Name: " << train.getName() << "\n";
+				ss << "Destination: " << train.getDestination() << "\n";
+				ss << "Available Seats: " << train.getSeats() << "\n";
+				ss << "Price: $" << train.getPrice() << "\n\n";
+				return ss.str();
+			}
+		}
+		return "Train not found!\n\n";
+	}
+
+	std::string reserveSeat(const std::string& trainName) {
+		for (auto& train : trains) {
+			if (train.getName() == trainName) {
+				train.reserveSeat();
+				return "Seat reserved successfully!\n";
+			}
+		}
+		return "Train not found!\n\n";
+	}
+
+	std::string showReservations() const {
+		std::stringstream ss;
+		ss << "Train Reservations:\n";
+		for (const auto& train : trains) {
+			ss << "Train Name: " << train.getName() << "\n";
+			ss << "Reserved Seats: " << train.getSeats() << "\n\n";
+		}
+		return ss.str();
+	}
+
+	std::string searchTrainsByDestination(const std::string& destination) const {
+		std::stringstream ss;
+		ss << "Trains to " << destination << ":\n";
+		for (const auto& train : trains) {
+			if (train.getDestination() == destination) {
+				ss << "Train Name: " << train.getName() << "\n";
+				ss << "Available Seats: " << train.getSeats() << "\n";
+				ss << "Price: $" << train.getPrice() << "\n\n";
+			}
+		}
+		return ss.str();
+	}
+
+	std::string searchTrainsByPrice(double maxPrice) const {
+		std::stringstream ss;
+		ss << "Trains within price range:\n";
+		for (const auto& train : trains) {
+			if (train.getPrice() <= maxPrice) {
+				ss << "Train Name: " << train.getName() << "\n";
+				ss << "Destination: " << train.getDestination() << "\n";
+				ss << "Available Seats: " << train.getSeats() << "\n";
+				ss << "Price: $" << train.getPrice() << "\n\n";
+			}
+		}
+		return ss.str();
+	}
+
+	std::string cancelReservation(const std::string& trainName) {
+		for (auto& train : trains) {
+			if (train.getName() == trainName) {
+				train.cancelReservation();
+				return "Reservation canceled successfully!\n";
+			}
+		}
+		return "Train not found!\n\n";
+	}
+
+private:
+	std::vector<Train> trains;
+};
+
+int main() {
+	TrainReservationSystem system;
+
+	system.addTrain("K", "Rivne", 10, 50.0);
+	system.addTrain("B", "Kyiv", 5, 40.0);
+	system.addTrain("R", "Lviv", 8, 60.0);
+
+	// Ініціалізація Winsock
+	WSADATA wsaData;
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+		std::cerr << "Failed to initialize winsock.\n";
+		return 1;
+	}
+
+	// Створення сокета для прийому з'єднань
+	SOCKET serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+	if (serverSocket == INVALID_SOCKET) {
+		std::cerr << "Failed to create socket.\n";
+		WSACleanup();
+		return 1;
+	}
+
+	// Зв'язування сокета з адресою та портом
+	sockaddr_in serverAddress;
+	serverAddress.sin_family = AF_INET;
+	serverAddress.sin_port = htons(12345);  // Встановити порт
+	serverAddress.sin_addr.s_addr = INADDR_ANY;
+	if (bind(serverSocket, reinterpret_cast<sockaddr*>(&serverAddress), sizeof(serverAddress)) ==
+		SOCKET_ERROR) {
+		std::cerr << "Failed to bind socket.\n";
+		closesocket(serverSocket);
+		WSACleanup();
+		return 1;
+	}
+
+	// Приймання з'єднань
+	if (listen(serverSocket, SOMAXCONN) == SOCKET_ERROR) {
+		std::cerr << "Failed to listen on socket.\n";
+		closesocket(serverSocket);
+		WSACleanup();
+		return 1;
+	}
+
+	std::cout << "Server started. Waiting for connections...\n";
+
+	while (true) {
+		// Очікування з'єднання
+		sockaddr_in clientAddress;
+		int clientAddressSize = sizeof(clientAddress);
+		SOCKET clientSocket = accept(serverSocket, reinterpret_cast<sockaddr*>(&clientAddress),
+			&clientAddressSize);
+		if (clientSocket == INVALID_SOCKET) {
+			std::cerr << "Failed to accept connection.\n";
+			closesocket(serverSocket);
+			WSACleanup();
+			return 1;
+		}
+
+		// Отримання запиту від клієнта
+		char buffer[1024];
+		int bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0);
+		if (bytesRead == SOCKET_ERROR) {
+			std::cerr << "Error in recv.\n";
+			closesocket(clientSocket);
+			continue;
+		}
+
+		// Обробка запиту
+		std::string request(buffer, bytesRead);
+		std::string response;
+
+		std::istringstream iss(request);
+		int command;
+		iss >> command;
+
+		if (command == 1) {
+			response = system.showAvailableTrains();
+		}
+		else if (command == 2) {
+			std::string trainName;
+			iss >> trainName;
+			response = system.showTrainDetails(trainName);
+		}
+		else if (command == 3) {
+			std::string trainName;
+			iss >> trainName;
+			response = system.reserveSeat(trainName);
+		}
+		else if (command == 4) {
+			response = system.showReservations();
+		}
+		else if (command == 5) {
+			std::string destination;
+			iss >> destination;
+			response = system.searchTrainsByDestination(destination);
+		}
+		else if (command == 6) {
+			double maxPrice;
+			iss >> maxPrice;
+			response = system.searchTrainsByPrice(maxPrice);
+		}
+		else if (command == 7) {
+			std::string trainName;
+			iss >> trainName;
+			response = system.cancelReservation(trainName);
+		}
+		else if (command == 8) {
+			std::string trainName, destination;
+			int seats;
+			double price;
+			iss >> trainName >> destination >> seats >> price;
+			system.addTrain(trainName, destination, seats, price);
+			response = "Train added successfully!\n";
+		}
+		else if (command == 9) {
+			std::string trainName;
+			iss >> trainName;
+			system.removeTrain(trainName);
+			response = "Train removed successfully!\n";
+		}
+		else {
+			response = "Invalid command.\n";
+		}
+
+		// Відправка відповіді клієнту
+		if (send(clientSocket, response.c_str(), response.length(), 0) == SOCKET_ERROR) {
+			std::cerr << "Error in send.\n";
+		}
+
+		// Закриття з'єднання з клієнтом
+		closesocket(clientSocket);
+	}
+
+	// Закриття сокета сервера
+	closesocket(serverSocket);
+
+	// Завершення Winsock
+	WSACleanup();
+
+	return 0;
+}
