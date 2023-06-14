@@ -1,0 +1,56 @@
+import socket
+
+# Функція для надсилання даних на сервер
+def send_data(data):
+    # З'єднання з сервером
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_address = ('localhost', 12345)  # Встановити адресу та порт сервера
+    client_socket.connect(server_address)
+
+    # Надіслати дані на сервер
+    client_socket.sendall(data.encode())
+
+    # Отримати відповідь від сервера
+    response = client_socket.recv(1024).decode()
+    print('Response from server:', response)
+
+    # Закрити з'єднання
+    client_socket.close()
+
+# Функція для обробки події натискання кнопки "Add Train"
+def add_train():
+    train_name = input("Enter train name: ")
+    destination = input("Enter destination: ")
+    seats = int(input("Enter number of seats: "))
+    price = float(input("Enter price: "))
+
+    send_data(f"8 {train_name} {destination} {seats} {price}")
+
+def remove_train():
+    train_name = input("Enter train name: ")
+    send_data(f"9 {train_name}")
+
+# Функція для обробки події натискання кнопки "Show Available Trains"
+def show_available_trains():
+    send_data("1")
+
+# Головний цикл адміністратора
+while True:
+    print("Admin Interface")
+    print("1. Show Available Trains")
+    print("2. Add Train")
+    print("3. Remove Train")
+    print("0. Exit")
+
+    choice = input("Enter your choice: ")
+
+    if choice == "1":
+        show_available_trains()
+    elif choice == "2":
+        add_train()
+    elif choice == "3":
+        remove_train()
+    elif choice == "0":
+        break
+    else:
+        print("Invalid choice. Please try again.\n")
